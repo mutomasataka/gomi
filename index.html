@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>今日はなんのゴミ？</title>
+  <meta name="theme-color" content="#2f855a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="今日はなんのゴミ？" />
+  <meta name="description" content="新地方面の収集カレンダーをもとに、今日と明日のごみ種別を確認できるPWAアプリです。" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --sub: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2f855a;
+      --burn: #4caf50;
+      --nonburn: #f4d03f;
+      --resource: #5dade2;
+      --plastic: #c97b30;
+      --hazard: #d96ca6;
+      --none: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #eef5ef 0%, var(--bg) 45%);
+    }
+
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #2f855a, #3ea86d);
+      color: #fff;
+      border-radius: 24px;
+      padding: 24px 20px;
+      box-shadow: 0 18px 50px rgba(47, 133, 90, 0.2);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 0;
+      opacity: 0.95;
+      line-height: 1.7;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      margin-top: 16px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+    }
+
+    input[type="date"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 16px;
+      background: #fff;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      opacity: 0.96;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-sub {
+      background: #edf2f7;
+      color: #1f2937;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .result-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .label {
+      font-size: 13px;
+      color: var(--sub);
+      margin-bottom: 10px;
+    }
+
+    .date-text {
+      font-size: 14px;
+      color: var(--sub);
+      margin-bottom: 12px;
+    }
+
+    .answer {
+      font-size: 28px;
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #1f2937;
+      background: #f3f4f6;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .burn { background: var(--burn); }
+    .nonburn { background: var(--nonburn); }
+    .resource { background: var(--resource); }
+    .plastic { background: var(--plastic); }
+    .hazard { background: var(--hazard); }
+    .none { background: var(--none); }
+
+    .note {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      background: #f8fafc;
+      color: #475569;
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .footer {
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--sub);
+      line-height: 1.8;
+    }
+
+    @media (max-width: 640px) {
+      .hero h1 {
+        font-size: 26px;
+      }
+
+      .input-row,
+      .result-grid,
+      .legend {
+        grid-template-columns: 1fr;
+      }
+
+      .answer {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>今日はなんのゴミ？</h1>
+      <p>新地方面の収集カレンダーをもとに、指定した日のごみ種別を表示する試作アプリです。令和8年4月から9月のデータを登録しています。</p>
+    </section>
+
+    <section class="panel">
+      <div class="controls">
+        <div>
+          <div class="label">対象地区</div>
+          <div>新地方面（港町・入船町・御崎町・本町・丸山町・新地町）</div>
+        </div>
+
+        <div>
+          <div class="label">日付を選ぶ</div>
+          <div class="input-row">
+            <input id="dateInput" type="date" />
+            <button class="btn-sub" id="todayBtn">今日</button>
+            <button class="btn-primary" id="showBtn">表示</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <article class="result-card">
+          <div class="label">選択した日</div>
+          <div class="date-text" id="selectedDateText">-</div>
+          <p class="answer" id="selectedAnswer">-</p>
+          <div class="chips" id="selectedChips"></div>
+        </article>
+
+        <article class="result-card">
+          <div class="label">次の日</div>
+          <div class="date-text" id="nextDateText">-</div>
+          <p class="answer" id="nextAnswer">-</p>
+          <div class="chips" id="nextChips"></div>
+        </article>
+      </div>
+
+      <div class="note" id="rangeNote">
+        この試作版は、令和8年4月1日から令和9年3月31日までの収集日を固定で登録しています。範囲外の日付は「データ未登録」と表示します。PWA対応版なので、Webサーバーに置けばホーム画面に追加できます。
+      </div>
+
+      <div class="note">
+        iPhoneやAndroidで使う場合は、このファイル一式をHTTPSで公開してください。公開後にSafariやChromeで開くと、ホーム画面に追加できます。オフラインでも最後に開いた画面を表示できるようにしています。
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="label">凡例</div>
+      <div class="legend">
+        <div class="legend-item"><span class="dot burn"></span>燃えるごみ</div>
+        <div class="legend-item"><span class="dot nonburn"></span>不燃ごみ</div>
+        <div class="legend-item"><span class="dot resource"></span>資源ごみ</div>
+        <div class="legend-item"><span class="dot plastic"></span>プラスチック類</div>
+        <div class="legend-item"><span class="dot hazard"></span>有害ごみ</div>
+        <div class="legend-item"><span class="dot none"></span>収集なし</div>
+      </div>
+    </section>
+
+    <div class="footer">
+      このファイルを index.html として保存し、ブラウザで開くと動きます。<br />
+      次の段階では、通知機能、地区切替、1年分データ、スマホのホーム画面追加対応を足せます。
+    </div>
+  </div>
+
+  <script>
+    const schedule = {
+      "2026-04-01": ["有害ごみ", "不燃ごみ"],
+      "2026-04-03": ["燃えるごみ"],
+      "2026-04-07": ["燃えるごみ"],
+      "2026-04-08": ["プラスチック類", "資源ごみ"],
+      "2026-04-10": ["燃えるごみ"],
+      "2026-04-14": ["燃えるごみ"],
+      "2026-04-15": ["不燃ごみ"],
+      "2026-04-17": ["燃えるごみ"],
+      "2026-04-21": ["燃えるごみ"],
+      "2026-04-22": ["プラスチック類", "資源ごみ"],
+      "2026-04-24": ["燃えるごみ"],
+      "2026-04-28": ["燃えるごみ"],
+
+      "2026-05-01": ["燃えるごみ"],
+      "2026-05-05": ["燃えるごみ"],
+      "2026-05-06": ["有害ごみ", "不燃ごみ"],
+      "2026-05-08": ["燃えるごみ"],
+      "2026-05-12": ["燃えるごみ"],
+      "2026-05-13": ["プラスチック類", "資源ごみ"],
+      "2026-05-15": ["燃えるごみ"],
+      "2026-05-19": ["燃えるごみ"],
+      "2026-05-20": ["不燃ごみ"],
+      "2026-05-22": ["燃えるごみ"],
+      "2026-05-26": ["燃えるごみ"],
+      "2026-05-27": ["プラスチック類", "資源ごみ"],
+      "2026-05-29": ["燃えるごみ"],
+
+      "2026-06-02": ["燃えるごみ"],
+      "2026-06-03": ["有害ごみ", "不燃ごみ"],
+      "2026-06-05": ["燃えるごみ"],
+      "2026-06-09": ["燃えるごみ"],
+      "2026-06-10": ["プラスチック類", "資源ごみ"],
+      "2026-06-12": ["燃えるごみ"],
+      "2026-06-16": ["燃えるごみ"],
+      "2026-06-17": ["不燃ごみ"],
+      "2026-06-19": ["燃えるごみ"],
+      "2026-06-23": ["燃えるごみ"],
+      "2026-06-24": ["プラスチック類", "資源ごみ"],
+      "2026-06-26": ["燃えるごみ"],
+      "2026-06-30": ["燃えるごみ"],
+
+      "2026-07-01": ["有害ごみ", "不燃ごみ"],
+      "2026-07-03": ["燃えるごみ"],
+      "2026-07-07": ["燃えるごみ"],
+      "2026-07-08": ["プラスチック類", "資源ごみ"],
+      "2026-07-10": ["燃えるごみ"],
+      "2026-07-14": ["燃えるごみ"],
+      "2026-07-15": ["不燃ごみ"],
+      "2026-07-17": ["燃えるごみ"],
+      "2026-07-21": ["燃えるごみ"],
+      "2026-07-22": ["プラスチック類", "資源ごみ"],
+      "2026-07-24": ["燃えるごみ"],
+      "2026-07-28": ["燃えるごみ"],
+      "2026-07-31": ["燃えるごみ"],
+
+      "2026-08-04": ["燃えるごみ"],
+      "2026-08-05": ["有害ごみ", "不燃ごみ"],
+      "2026-08-07": ["燃えるごみ"],
+      "2026-08-11": ["燃えるごみ"],
+      "2026-08-12": ["プラスチック類", "資源ごみ"],
+      "2026-08-14": ["燃えるごみ"],
+      "2026-08-18": ["燃えるごみ"],
+      "2026-08-19": ["不燃ごみ"],
+      "2026-08-21": ["燃えるごみ"],
+      "2026-08-25": ["燃えるごみ"],
+      "2026-08-26": ["プラスチック類", "資源ごみ"],
+      "2026-08-28": ["燃えるごみ"],
+
+      "2026-09-01": ["燃えるごみ"],
+      "2026-09-02": ["有害ごみ", "不燃ごみ"],
+      "2026-09-04": ["燃えるごみ"],
+      "2026-09-08": ["燃えるごみ"],
+      "2026-09-09": ["プラスチック類", "資源ごみ"],
+      "2026-09-11": ["燃えるごみ"],
+      "2026-09-15": ["燃えるごみ"],
+      "2026-09-16": ["不燃ごみ"],
+      "2026-09-18": ["燃えるごみ"],
+      "2026-09-22": ["燃えるごみ"],
+      "2026-09-23": ["プラスチック類", "資源ごみ"],
+      "2026-09-25": ["燃えるごみ"],
+      "2026-09-29": ["燃えるごみ"],
+
+      "2026-10-02": ["燃えるごみ"],
+      "2026-10-06": ["燃えるごみ"],
+      "2026-10-07": ["有害ごみ", "不燃ごみ"],
+      "2026-10-09": ["燃えるごみ"],
+      "2026-10-13": ["燃えるごみ"],
+      "2026-10-14": ["プラスチック類", "資源ごみ"],
+      "2026-10-16": ["燃えるごみ"],
+      "2026-10-20": ["燃えるごみ"],
+      "2026-10-21": ["不燃ごみ"],
+      "2026-10-23": ["燃えるごみ"],
+      "2026-10-27": ["燃えるごみ"],
+      "2026-10-28": ["プラスチック類", "資源ごみ"],
+      "2026-10-30": ["燃えるごみ"],
+
+      "2026-11-03": ["燃えるごみ"],
+      "2026-11-04": ["有害ごみ", "不燃ごみ"],
+      "2026-11-06": ["燃えるごみ"],
+      "2026-11-10": ["燃えるごみ"],
+      "2026-11-11": ["プラスチック類", "資源ごみ"],
+      "2026-11-13": ["燃えるごみ"],
+      "2026-11-17": ["燃えるごみ"],
+      "2026-11-18": ["不燃ごみ"],
+      "2026-11-20": ["燃えるごみ"],
+      "2026-11-24": ["燃えるごみ"],
+      "2026-11-25": ["プラスチック類", "資源ごみ"],
+      "2026-11-27": ["燃えるごみ"],
+
+      "2026-12-01": ["燃えるごみ"],
+      "2026-12-02": ["有害ごみ", "不燃ごみ"],
+      "2026-12-04": ["燃えるごみ"],
+      "2026-12-08": ["燃えるごみ"],
+      "2026-12-09": ["プラスチック類", "資源ごみ"],
+      "2026-12-11": ["燃えるごみ"],
+      "2026-12-15": ["燃えるごみ"],
+      "2026-12-16": ["不燃ごみ"],
+      "2026-12-18": ["燃えるごみ"],
+      "2026-12-22": ["燃えるごみ"],
+      "2026-12-23": ["プラスチック類", "資源ごみ"],
+      "2026-12-25": ["燃えるごみ"],
+      "2026-12-29": ["燃えるごみ"],
+
+      "2027-01-05": ["燃えるごみ"],
+      "2027-01-06": ["有害ごみ", "不燃ごみ"],
+      "2027-01-08": ["燃えるごみ"],
+      "2027-01-12": ["燃えるごみ"],
+      "2027-01-13": ["プラスチック類", "資源ごみ"],
+      "2027-01-15": ["燃えるごみ"],
+      "2027-01-19": ["燃えるごみ"],
+      "2027-01-20": ["不燃ごみ"],
+      "2027-01-22": ["燃えるごみ"],
+      "2027-01-26": ["燃えるごみ"],
+      "2027-01-27": ["プラスチック類", "資源ごみ"],
+      "2027-01-29": ["燃えるごみ"],
+
+      "2027-02-02": ["燃えるごみ"],
+      "2027-02-03": ["有害ごみ", "不燃ごみ"],
+      "2027-02-05": ["燃えるごみ"],
+      "2027-02-09": ["燃えるごみ"],
+      "2027-02-10": ["プラスチック類", "資源ごみ"],
+      "2027-02-12": ["燃えるごみ"],
+      "2027-02-16": ["燃えるごみ"],
+      "2027-02-17": ["不燃ごみ"],
+      "2027-02-19": ["燃えるごみ"],
+      "2027-02-23": ["燃えるごみ"],
+      "2027-02-24": ["プラスチック類", "資源ごみ"],
+      "2027-02-26": ["燃えるごみ"],
+
+      "2027-03-02": ["燃えるごみ"],
+      "2027-03-03": ["有害ごみ", "不燃ごみ"],
+      "2027-03-05": ["燃えるごみ"],
+      "2027-03-09": ["燃えるごみ"],
+      "2027-03-10": ["プラスチック類", "資源ごみ"],
+      "2027-03-12": ["燃えるごみ"],
+      "2027-03-16": ["燃えるごみ"],
+      "2027-03-17": ["不燃ごみ"],
+      "2027-03-19": ["燃えるごみ"],
+      "2027-03-23": ["燃えるごみ"],
+      "2027-03-24": ["プラスチック類", "資源ごみ"],
+      "2027-03-26": ["燃えるごみ"],
+      "2027-03-30": ["燃えるごみ"]
+    };
+
+    const colorClassMap = {
+      "燃えるごみ": "burn",
+      "不燃ごみ": "nonburn",
+      "資源ごみ": "resource",
+      "プラスチック類": "plastic",
+      "有害ごみ": "hazard"
+    };
+
+    const dateInput = document.getElementById("dateInput");
+    const showBtn = document.getElementById("showBtn");
+    const todayBtn = document.getElementById("todayBtn");
+
+    function pad(num) {
+      return String(num).padStart(2, "0");
+    }
+
+    function toISODate(date) {
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function parseISODate(iso) {
+      const [y, m, d] = iso.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function addDays(date, days) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    function formatJPDate(date) {
+      return new Intl.DateTimeFormat("ja-JP", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "long"
+      }).format(date);
+    }
+
+    function getWasteInfo(iso) {
+      const start = "2026-04-01";
+      const end = "2027-03-31";
+
+      if (iso < start || iso > end) {
+        return {
+          status: "out",
+          text: "データ未登録",
+          items: []
+        };
+      }
+
+      const items = schedule[iso] || [];
+      if (items.length === 0) {
+        return {
+          status: "none",
+          text: "収集なし",
+          items: []
+        };
+      }
+
+      return {
+        status: "ok",
+        text: items.join("・"),
+        items
+      };
+    }
+
+    function renderCard(prefix, iso) {
+      const date = parseISODate(iso);
+      const info = getWasteInfo(iso);
+      document.getElementById(`${prefix}DateText`).textContent = formatJPDate(date);
+      document.getElementById(`${prefix}Answer`).textContent = info.text;
+
+      const chips = document.getElementById(`${prefix}Chips`);
+      chips.innerHTML = "";
+
+      if (info.status === "ok") {
+        info.items.forEach((item) => {
+          const chip = document.createElement("div");
+          chip.className = "chip";
+          chip.innerHTML = `<span class="dot ${colorClassMap[item] || "none"}"></span>${item}`;
+          chips.appendChild(chip);
+        });
+      } else {
+        const chip = document.createElement("div");
+        chip.className = "chip";
+        chip.innerHTML = `<span class="dot none"></span>${info.text}`;
+        chips.appendChild(chip);
+      }
+    }
+
+    function render(selectedISO) {
+      renderCard("selected", selectedISO);
+      const nextISO = toISODate(addDays(parseISODate(selectedISO), 1));
+      renderCard("next", nextISO);
+    }
+
+    function setToday() {
+      const today = new Date();
+      dateInput.value = toISODate(today);
+      render(dateInput.value);
+    }
+
+    showBtn.addEventListener("click", () => {
+      if (!dateInput.value) setToday();
+      render(dateInput.value);
+    });
+
+    todayBtn.addEventListener("click", setToday);
+
+    dateInput.addEventListener("change", () => {
+      if (dateInput.value) render(dateInput.value);
+    });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch((error) => {
+          console.error("Service Worker registration failed:", error);
+        });
+      });
+    }
+
+    setToday();
+  </script>
+</body>
+</html>
